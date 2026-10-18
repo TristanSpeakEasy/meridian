@@ -1,0 +1,20 @@
+src/__tests__/openai.test.ts
+  h_9630b74bdac540 12,1669-1704
+src/__tests__/proxy-openai-compat.test.ts
+  h_9630b74bdac540 898-947
+src/proxy/openai.ts
+  h_9630b74bdac540 1064-1103
+src/proxy/server.ts
+  h_9630b74bdac540 123,10898-10906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "290ddf6d1903b91794d5e38c9617b7effb58ab26",
+  "prompts": {},
+  "humans": {
+    "h_9630b74bdac540": {
+      "author": "Tristan Cartledge <tristan@speakeasyapi.dev>"
+    }
+  }
+}
