@@ -21,7 +21,9 @@ Record what Meridian did and show it to the operator:
   shared site header (`profileBar.ts`), which is the single home of the color
   tokens;
 - pure presentation shared with the desktop app (`providerView.ts`,
-  `providerSetup.ts`);
+  `providerSetup.ts`, `settingRow.ts`), and the pure cost valuation in
+  `pricing.ts`, whose `resolveRequestPricing` the desktop uses to value each
+  request exactly as `computeCostEstimate` does;
 - the shared `settingRow` presentation (`settingRow.ts`) every `/settings`
   row renders through: label and control on one line, description, status and
   env-override lines below. The override line credits an env var only when the
@@ -69,6 +71,26 @@ Record what Meridian did and show it to the operator:
   and `meridian_cache_keepalive_beats_total{outcome}`. A beat that never
   reached upstream carries status `0` and its reason in `error`, and is shown
   as skipped, not as an error.
+
+- **`/telemetry/timeseries` buckets what `/summary` counts.** It serves the
+  desktop app's history charts: `start`/`end`/`bucket` (or `window` instead of
+  `start`), buckets aligned to `start` over `[start, end)` so a client's local
+  midnight yields local-hour buckets, every bucket present. Rows are the raw
+  store rows with keepalive beats excluded, NOT collapsed route chains, because
+  `computeSummary` does not collapse either; a failover's hops count once each,
+  so the buckets of a range sum to the summary's requests, errors and token
+  totals. Hit rate is summary's mean per-row rate, p50 uses
+  `computePercentiles`, cost is `computeCostEstimate` with the user overrides:
+  `costUsd` is `null` only when every request in the bucket is unpriced, and
+  `unpricedRequests` labels a partial figure (an empty bucket costs `0`).
+  Ranges over 31 days or 1,000 buckets are refused, which bounds the response;
+  the read goes through `getRecent` with an exclusive `until`, so rows after
+  `end` do not spend the 100,000-row bound (summary's SQLite bound).
+  `truncated` is set when that bound is hit, when a full memory ring's oldest
+  row is newer than `start`, or when `start` reaches past SQLite retention and
+  the oldest held row is newer than it. A ring that is not full has dropped
+  nothing, so a range before the first request is empty, not truncated. The
+  bucketing is pure (`timeseries.ts`); the route only parses and reads.
 
 User-facing behavior is documented in `MONITORING.md`.
 
