@@ -38,6 +38,13 @@ describe("extractOpenAiContent", () => {
     ])).toBe("[Image attached]only this")
   })
 
+  it("summarizes file parts in text extraction", () => {
+    expect(extractOpenAiContent([
+      { type: "file", file: { file_data: "data:application/pdf;base64,JVBERi0x" } },
+      { type: "text", text: "read it" },
+    ])).toBe("[Document attached]read it")
+  })
+
   it("returns empty string for empty array", () => {
     expect(extractOpenAiContent([])).toBe("")
   })
@@ -310,6 +317,68 @@ describe("translateOpenAiToAnthropic", () => {
       role: "user",
       content: [
         { type: "image", source: { type: "base64", media_type: "image/jpeg", data: "abc123" } },
+      ],
+    }])
+  })
+
+  it("maps base64 PDF file parts to document blocks", () => {
+    const result = translateOpenAiToAnthropic({
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: "summarize" },
+          { type: "file", file: { filename: "report.pdf", file_data: "data:application/pdf;base64,JVBERi0x" } },
+        ],
+      }],
+    })
+
+    expect(result!.messages).toEqual([{
+      role: "user",
+      content: [
+        { type: "text", text: "summarize" },
+        { type: "document", title: "report.pdf", source: { type: "base64", media_type: "application/pdf", data: "JVBERi0x" } },
+      ],
+    }])
+  })
+
+  // Only inline base64 PDFs can become Anthropic document blocks. An uploaded
+  // file_id or another media type gets a note so the model knows it is missing.
+  it("adds an explicit placeholder for file parts that cannot be inlined", () => {
+    const result = translateOpenAiToAnthropic({
+      messages: [{
+        role: "user",
+        content: [
+          { type: "file", file: { file_id: "file-abc" } },
+          { type: "file", file: { file_data: "data:text/csv;base64,YSxi" } },
+        ],
+      }],
+    })
+
+    expect(result!.messages).toEqual([{
+      role: "user",
+      content: [
+        { type: "text", text: "[Unsupported file omitted: only base64 PDF data URLs are currently supported]" },
+        { type: "text", text: "[Unsupported file omitted: only base64 PDF data URLs are currently supported]" },
+      ],
+    }])
+  })
+
+  it("adds an explicit placeholder instead of silently dropping unknown parts", () => {
+    const result = translateOpenAiToAnthropic({
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: "listen" },
+          { type: "input_audio" },
+        ],
+      }],
+    })
+
+    expect(result!.messages).toEqual([{
+      role: "user",
+      content: [
+        { type: "text", text: "listen" },
+        { type: "text", text: "[Unsupported input_audio content part omitted]" },
       ],
     }])
   })
